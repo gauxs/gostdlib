@@ -131,8 +131,28 @@ func (st *SegmentTree) Describe() map[string]string {
 	description["number of nodes"] = strconv.Itoa(st.numOfNodes)
 	description["root exists"] = fmt.Sprintf("%t", st.root != nil)
 	description["resolver exists"] = fmt.Sprintf("%t", st.res != nil)
+	return description
+}
 
-	return nil
+func (st *SegmentTree) CountNodes() int {
+	if st.root == nil {
+		return 0
+	}
+
+	return st.countNodes(st.root)
+}
+
+func (st *SegmentTree) countNodes(node *SegmentNode) int {
+	var leftCount, rightCount int
+	if node.left != nil {
+		leftCount = st.countNodes(node.left)
+	}
+
+	if node.right != nil {
+		rightCount = st.countNodes(node.right)
+	}
+
+	return 1 + leftCount + rightCount
 }
 
 func (st *SegmentTree) build() error {

@@ -1,17 +1,19 @@
-package main
+package main_test
 
 import (
-	"context"
 	"database/sql"
+	"fmt"
 	"gostdlib/trees/segment"
-	"net/http"
+	"testing"
+	"unsafe"
+
+	"context"
 	"strconv"
 
-	_ "github.com/go-sql-driver/mysql"
-
-	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // RANGE
@@ -251,30 +253,11 @@ func (cir *CustomIntResolver) Resolve(lRange segment.Range, rRange segment.Range
 	}
 }
 
-func Segment(ginC *gin.Context) {
-	urlParam := ginC.Request.URL.Query()
-	l, _ := strconv.Atoi(urlParam["lRange"][0])
-	r, _ := strconv.Atoi(urlParam["rRange"][0])
-
-	var queryLRange, queryRRange CustomIntRange
-	result := make(map[string]interface{})
-	queryLRange = CustomIntRange(l)
-	queryRRange = CustomIntRange(r)
-	cacheHit, cacheMiss, resultSegmentData := segmentTree.Get(queryLRange, queryRRange)
-	data, _ := resultSegmentData.Get()
-
-	result["redisCache Hits"] = cacheHit
-	result["redisCache Miss"] = cacheMiss
-	result["Result"] = data
-
-	ginC.JSON(http.StatusOK, result)
-}
-
 var ctx context.Context
 var redisCache *redis.Client
 var segmentTree *segment.SegmentTree
 
-func main() {
+func BenchmarkBasicGet(t *testing.B) {
 	ctx = context.Background()
 	redisCache = redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
@@ -293,13 +276,15 @@ func main() {
 	segmentTree.SetRoot(rootNode)
 	segmentTree.SetResolver(resolver)
 
-	ginEngine := gin.Default()
-	ginEngine.GET("/segment", Segment)
-	ginRunErr := ginEngine.Run("localhost" + ":" + "7890")
+	var queryLRange, queryRRange CustomIntRange
+	queryLRange = CustomIntRange(1)
+	queryRRange = CustomIntRange(10000)
+	cacheHit, cacheMiss, resultSegmentData := segmentTree.Get(queryLRange, queryRRange)
+	data, _ := resultSegmentData.Get()
 
-	if ginRunErr != nil {
-		panic(ginRunErr)
-	}
-
-	resolver.Close()
+	fmt.Printf("size of single node: %d\n", unsafe.Sizeof(*rootNode))
+	fmt.Printf("total number of node(s): %d\n", segmentTree.CountNodes())
+	fmt.Printf("redisCache Hits: %d\n", cacheHit)
+	fmt.Printf("redisCache Miss: %d\n", cacheMiss)
+	fmt.Printf("Result: %d\n", data)
 }
