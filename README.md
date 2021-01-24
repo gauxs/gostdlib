@@ -2,7 +2,7 @@
 
 **gostdlib** is an effort to build a standard library for Go. It include production ready implementation of advanced datastructures.
 
-## Features
+## Data structures
 -   Segment tree
 
 ## Todo(s)
